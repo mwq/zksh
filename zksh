@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+require 'zk'
+require 'readline'
+
+if ARGV.empty?
+  puts "usage"
+  puts "./zksh fookeeper01:2181 fookeeper02:2181 fookeeper03:2181"
+  exit
+end
+hosts = ARGV.join(',')
+
+puts "connection to #{hosts}"
+zk = ZK.new hosts
+cwd = '/'
+while line = Readline.readline('> ', true)
+  case line.strip
+  when 'ls'
+    zk.children(cwd).each { |child| puts child }
+  when 'cd ..'
+    new_cwd = cwd.chomp(cwd.split('/').last).
+    cwd = new_cwd
+
+  when /cd ([^\s]+)/
+    new_cwd = cwd.chomp('/') + '/' + $1
+    if zk.exists? new_cwd
+      cwd = new_cwd
+    else
+      puts "#{new_cwd} does not exist"
+    end
+  when /cat ([^\s]+)/
+    node = cwd.chomp('/') + '/' + $1
+    if zk.exists? node
+      puts zk.get(node).first
+    else
+      puts "#{new_cwd} does not exist"
+    end
+
+  when 'help'
+    puts 'ls - list children'
+    puts 'cd CHILD - change pwd to child'
+    puts 'cat - change pwd to child'
+
+  when 'pwd'
+    puts cwd
+  else
+    puts 'no command'
+  end
+end
